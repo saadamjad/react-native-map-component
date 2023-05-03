@@ -105,7 +105,7 @@ const App = () => {
             elevation: 10,
           }}
         >
-            <WebView
+            {/* <WebView
               style={{
                 flex: 1,
                 shadowColor: "#000",
@@ -116,7 +116,7 @@ const App = () => {
               javaScriptEnabled={true}
               ref={webViewRef}
               incognito={true}
-            />
+            /> */}
         </View>
       </ScrollView>
     </View>
