@@ -1,12 +1,17 @@
 /** @format */
 
-import { Dimensions } from 'react-native';
 
 import { MapComponent } from './src/map';
+import { useState } from 'react';
 
-const windowWidth = Dimensions.get('window').width;
-const windowHeight = Dimensions.get('window').height;
+import { Context } from './src/context';
 const App = () => {
-	return MapComponent();
+	const [context, setContext] = useState({});
+
+	return (
+		<Context.Provider value={[context, setContext]}>
+			<MapComponent />
+		</Context.Provider>
+	);
 };
 export default App;

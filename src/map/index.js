@@ -1,25 +1,30 @@
 /** @format */
 
-import React, { useEffect, useRef, useState } from 'react';
-import {
-	View,
-	Dimensions,
-	SafeAreaView,
-	ActivityIndicator,
-} from 'react-native';
-import Geolocation from '@react-native-community/geolocation';
+import React, {
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
+import { View, SafeAreaView, ActivityIndicator } from 'react-native';
 
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { Context } from '../context';
 
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import axios from 'react-native-axios';
-const windowWidth = Dimensions.get('window').width;
-const windowHeight = Dimensions.get('window').height;
+import { GetApiCall } from '../utils/apiCall';
+import { getCurrentLocation } from '../utils/getcurrentLocation';
+import { Loader } from '../utils/loader';
+import { PlaceInput } from '../utils/placeInput';
 const googleMapKey = 'AIzaSyAEl91Vndp067MG7IhjWYgjrPF5IMW4_88';
+
 const MapComponent = () => {
 	let mapRef = useRef('');
 	const [loader, setLoader] = useState(false);
 	const [drag, setDrag] = useState(false);
+	const [context, setContext] = useContext(Context);
+	getCurrentLocation();
 
 	const [locations, setLocations] = useState({
 		locations: {
@@ -35,59 +40,21 @@ const MapComponent = () => {
 	const getLocationsName = async (value) => {
 		setLoader(true);
 
-		const { latitude, longitude, latitudeDelta, longitudeDelta } = value;
-		console.log(latitude, longitude, latitudeDelta, longitudeDelta);
-		const queryParam = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&sensor=true&key=${googleMapKey}`;
-		axios
-			.get(queryParam)
-			.then((response) => {
-				setLoader(false);
-				const splittedValue =
-					response?.data?.results[0]?.formatted_address?.split(',');
+		const { latitude, longitude } = value;
 
-				const placeName = splittedValue[0];
-				const placeDescription = splittedValue[1] + ' ' + splittedValue[2];
-				setLocations({
-					...locations,
-					locations: {
-						...locations?.locations,
-						latitude: latitude,
-						longitude: longitude,
-					},
-					placeName: placeName,
-					placeDescription: placeDescription,
-				});
-			})
-			.catch((err) => {
-				console.log({ err });
-				setLoader(false);
+		GetApiCall(value).then((res) => {
+			setLocations({
+				...locations,
+				locations: {
+					...locations?.locations,
+					latitude: latitude,
+					longitude: longitude,
+				},
+				...res,
 			});
+			setLoader(false);
+		});
 	};
-	const getCurrentLocation = async () => {
-		Geolocation.getCurrentPosition(
-			(position) => {
-				let region = {
-					latitude: parseFloat(position.coords.latitude),
-					longitude: parseFloat(position.coords.longitude),
-					latitudeDelta: 0.0001,
-					longitudeDelta: 0.1,
-				};
-
-				mapRef.current.animateToRegion(region, 3000);
-				getLocationsName(region);
-			},
-			(error) => console.log(error),
-			{
-				enableHighAccuracy: true,
-				timeout: 50000,
-				maximumAge: 1000,
-			}
-		);
-	};
-
-	useEffect(() => {
-		getCurrentLocation();
-	}, []);
 
 	const renderMapComponent = () => {
 		if (mapRef)
@@ -136,6 +103,15 @@ const MapComponent = () => {
 
 		return null;
 	};
+	useEffect(() => {
+		if (context) {
+			setLocations({
+				...locations,
+				locations: context,
+			});
+			mapRef.current.animateToRegion(context, 4000);
+		}
+	}, [context]);
 	const GooglePlacesInput = () => {
 		const ref = useRef();
 		return (
@@ -169,9 +145,7 @@ const MapComponent = () => {
 						latitudeDelta: 0.0001,
 						longitudeDelta: 0.1,
 					};
-					console.log('=========', locationObj);
 					getLocationsName(locationObj);
-
 					mapRef.current.animateToRegion(locationObj, 4000);
 				}}
 				query={{
@@ -182,29 +156,11 @@ const MapComponent = () => {
 			/>
 		);
 	};
-
-	const renderLoader = () => {
-		if (loader) {
-			return (
-				<View
-					style={{
-						width: '90%',
-						alignSelf: 'center',
-						height: 100,
-						position: 'absolute',
-						bottom: 20,
-						alignSelf: 'center',
-						justifyContent: 'center',
-					}}>
-					<ActivityIndicator
-						size='large'
-						color='green'
-					/>
-				</View>
-			);
-		}
+	const renderLoader = useCallback(() => {
+		if (loader) return <Loader loading={loader} />;
 		return null;
-	};
+	}, [loader]);
+
 	return (
 		<SafeAreaView style={{ flex: 1 }}>
 			{renderMapComponent()}
